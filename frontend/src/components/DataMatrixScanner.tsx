@@ -74,8 +74,9 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
           facingMode: 'environment', // 후면 카메라
           width: { ideal: 3840, min: 1920 }, // 고해상도
           height: { ideal: 2160, min: 1080 },
-          focusMode: 'continuous', // 자동 포커스
-          zoom: { ideal: 2.0 }, // 줌 설정 (지원되는 경우)
+          // focusMode와 zoom은 타입 정의에 없지만 런타임에서 지원될 수 있음
+          ...({ focusMode: 'continuous' } as any), // 자동 포커스
+          ...({ zoom: { ideal: 2.0 } } as any), // 줌 설정 (지원되는 경우)
         },
       });
 
@@ -100,13 +101,12 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
         // 카메라 설정 최적화 (지원되는 경우)
         const track = stream.getVideoTracks()[0];
         if (track && track.getCapabilities) {
-          const capabilities = track.getCapabilities();
-          const settings = track.getSettings();
+          const capabilities = track.getCapabilities() as any;
           
           // 자동 포커스 설정
           if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
             await track.applyConstraints({
-              advanced: [{ focusMode: 'continuous' }],
+              advanced: [{ focusMode: 'continuous' } as any],
             });
           }
           
@@ -114,7 +114,7 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
           if (capabilities.zoom && capabilities.zoom.max > 1) {
             const zoomValue = Math.min(2.0, capabilities.zoom.max);
             await track.applyConstraints({
-              advanced: [{ zoom: zoomValue }],
+              advanced: [{ zoom: zoomValue } as any],
             });
           }
         }
