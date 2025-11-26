@@ -13,7 +13,8 @@
   "license": "ISC",
   "devDependencies": {
     "concurrently": "^9.1.2"
+  },
+  "dependencies": {
+    "@vercel/node": "^5.5.12"
   }
 }
-
-
