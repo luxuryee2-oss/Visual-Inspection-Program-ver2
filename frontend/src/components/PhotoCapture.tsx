@@ -155,16 +155,17 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
             <div className="flex gap-2">
               <Button
                 onClick={capturePhoto}
-                className="flex-1 border-4 border-foreground shadow-lg"
-                size="lg"
+                className="flex-1 border-4 border-foreground shadow-lg text-sm py-2"
+                size="sm"
               >
-                <Camera className="mr-2 h-4 w-4" />
+                <Camera className="mr-1 h-3 w-3" />
                 촬영
               </Button>
               <Button
                 onClick={stopCamera}
                 variant="outline"
-                className="flex-1 border-4 border-foreground"
+                className="flex-1 border-4 border-foreground text-sm py-2"
+                size="sm"
               >
                 취소
               </Button>
@@ -175,19 +176,19 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
             <div className="flex gap-2">
               <Button
                 onClick={startCamera}
-                className="flex-1 border-4 border-foreground shadow-lg"
-                size="lg"
+                className="flex-1 border-4 border-foreground shadow-lg text-sm py-2"
+                size="sm"
               >
-                <Camera className="mr-2 h-4 w-4" />
+                <Camera className="mr-1 h-3 w-3" />
                 촬영
               </Button>
               <Button
                 onClick={() => fileInputRef.current?.click()}
                 variant="outline"
-                className="flex-1 border-4 border-foreground"
-                size="lg"
+                className="flex-1 border-4 border-foreground text-sm py-2"
+                size="sm"
               >
-                <Upload className="mr-2 h-4 w-4" />
+                <Upload className="mr-1 h-3 w-3" />
                 파일 선택
               </Button>
             </div>
@@ -195,6 +196,7 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              capture="environment"
               onChange={handleFileSelect}
               className="hidden"
             />
