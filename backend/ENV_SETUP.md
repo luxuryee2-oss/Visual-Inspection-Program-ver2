@@ -11,8 +11,11 @@ AZURE_CLIENT_SECRET=여기에-클라이언트-시크릿-입력
 AZURE_TENANT_ID=1757bd3c-a2e2-4dd3-9a67-139612e54698
 
 # SharePoint 설정
-SHAREPOINT_SITE_ID=여기에-사이트-ID-입력
-SHAREPOINT_DRIVE_ID=여기에-드라이브-ID-입력
+# 사이트 URL만 입력하면 사이트 ID와 드라이브 ID는 자동으로 조회됩니다
+SHAREPOINT_SITE_URL=https://kyungshino365.sharepoint.com/sites/checksheet
+# 또는 수동으로 입력:
+# SHAREPOINT_SITE_ID=여기에-사이트-ID-입력
+# SHAREPOINT_DRIVE_ID=여기에-드라이브-ID-입력
 SHAREPOINT_FOLDER_PATH=InspectionData
 ```
 

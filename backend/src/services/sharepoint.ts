@@ -148,21 +148,78 @@ async function uploadFileToSharePoint(
   }
 }
 
+// SharePoint 사이트 ID 가져오기 (URL에서 자동 조회)
+async function getSiteIdFromUrl(client: Client, siteUrl: string): Promise<string> {
+  try {
+    // URL 정규화 (https://kyungshino365.sharepoint.com/sites/checksheet 형식)
+    const normalizedUrl = siteUrl
+      .replace(/^https?:\/\//, '')
+      .replace(/\/$/, '')
+      .split('/Lists/')[0] // Lists/List45 같은 부분 제거
+      .split('/:l:')[0]; // :l: 같은 부분 제거
+    
+    const response = await client
+      .api(`/sites/${normalizedUrl}`)
+      .get();
+    
+    return response.id;
+  } catch (error: any) {
+    console.error('사이트 ID 조회 오류:', error);
+    throw new Error(`SharePoint 사이트를 찾을 수 없습니다: ${error.message}`);
+  }
+}
+
+// SharePoint 드라이브 ID 가져오기 (기본 문서 라이브러리)
+async function getDriveId(client: Client, siteId: string): Promise<string> {
+  try {
+    const response = await client
+      .api(`/sites/${siteId}/drives`)
+      .get();
+    
+    // 보통 첫 번째 드라이브가 "문서" 라이브러리
+    if (response.value && response.value.length > 0) {
+      return response.value[0].id;
+    }
+    
+    throw new Error('드라이브를 찾을 수 없습니다');
+  } catch (error: any) {
+    console.error('드라이브 ID 조회 오류:', error);
+    throw new Error(`SharePoint 드라이브를 찾을 수 없습니다: ${error.message}`);
+  }
+}
+
 // SharePoint에 데이터 저장
 export async function saveToSharePoint(data: InspectionData): Promise<any> {
   try {
     // 환경 변수 확인
+    const siteUrl = process.env.SHAREPOINT_SITE_URL;
     const siteId = process.env.SHAREPOINT_SITE_ID;
     const driveId = process.env.SHAREPOINT_DRIVE_ID;
     const folderPath = process.env.SHAREPOINT_FOLDER_PATH || 'InspectionData';
 
-    if (!siteId || !driveId) {
-      throw new Error('SharePoint 설정이 완료되지 않았습니다. 환경 변수를 확인해주세요.');
-    }
-
     // 액세스 토큰 가져오기
     const accessToken = await getAccessToken();
     const client = getGraphClient(accessToken);
+
+    // 사이트 ID와 드라이브 ID 자동 조회
+    let finalSiteId = siteId;
+    let finalDriveId = driveId;
+
+    if (!finalSiteId && siteUrl) {
+      console.log('사이트 ID 자동 조회 중...');
+      finalSiteId = await getSiteIdFromUrl(client, siteUrl);
+      console.log('사이트 ID:', finalSiteId);
+    }
+
+    if (!finalDriveId && finalSiteId) {
+      console.log('드라이브 ID 자동 조회 중...');
+      finalDriveId = await getDriveId(client, finalSiteId);
+      console.log('드라이브 ID:', finalDriveId);
+    }
+
+    if (!finalSiteId || !finalDriveId) {
+      throw new Error('SharePoint 설정이 완료되지 않았습니다. SHAREPOINT_SITE_URL 또는 SHAREPOINT_SITE_ID를 확인해주세요.');
+    }
 
     // 타임스탬프로 폴더명 생성
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -182,8 +239,8 @@ export async function saveToSharePoint(data: InspectionData): Promise<any> {
     const jsonContent = Buffer.from(JSON.stringify(jsonData, null, 2), 'utf-8');
     await uploadFileToSharePoint(
       client,
-      siteId,
-      driveId,
+      finalSiteId,
+      finalDriveId,
       productFolderPath,
       jsonFileName,
       jsonContent
@@ -207,8 +264,8 @@ export async function saveToSharePoint(data: InspectionData): Promise<any> {
           const photoFileName = `${label}.jpg`;
           const photoUrl = await uploadFileToSharePoint(
             client,
-            siteId,
-            driveId,
+            finalSiteId,
+            finalDriveId,
             productFolderPath,
             photoFileName,
             photoBuffer
