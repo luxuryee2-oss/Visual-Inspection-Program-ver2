@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { saveToLocal } from '../services/localStorage';
+import { saveToSharePoint } from '../services/sharepoint';
 
 const router = express.Router();
 
@@ -26,8 +26,8 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // 로컬 파일 시스템에 저장
-    const result = await saveToLocal(data);
+    // SharePoint에 저장
+    const result = await saveToSharePoint(data);
 
     res.json({
       success: true,
