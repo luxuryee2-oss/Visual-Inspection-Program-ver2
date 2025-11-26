@@ -137,41 +137,58 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
           const productName = parseDataMatrix(scannedText);
           
           if (productName) {
-            // 스캔 성공 시 즉시 스트림 정리
-            if (streamRef.current) {
-              streamRef.current.getTracks().forEach(track => {
-                track.stop();
-                track.enabled = false;
-              });
-              streamRef.current = null;
-            }
-            if (videoRef.current) {
-              videoRef.current.srcObject = null;
-              videoRef.current.pause();
-            }
-            if (codeReaderRef.current) {
-              codeReaderRef.current = null;
-            }
-            
-            // 페이지의 모든 비디오 요소에서 스트림 정리
-            const allVideos = document.querySelectorAll('video');
-            allVideos.forEach(video => {
-              if (video.srcObject) {
-                const stream = video.srcObject as MediaStream;
-                stream.getTracks().forEach(track => {
+            // 스캔 성공 시 즉시 모든 스트림 강제 정리
+            const cleanup = () => {
+              // 현재 스트림 정리
+              if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => {
                   track.stop();
                   track.enabled = false;
                 });
-                video.srcObject = null;
-                video.pause();
+                streamRef.current = null;
               }
-            });
+              
+              // 비디오 요소 정리
+              if (videoRef.current) {
+                videoRef.current.srcObject = null;
+                videoRef.current.pause();
+                videoRef.current.load(); // 비디오 요소 완전히 리셋
+              }
+              
+              // 코드 리더 정리
+              if (codeReaderRef.current) {
+                codeReaderRef.current = null;
+              }
+              
+              // 페이지의 모든 비디오 요소에서 스트림 정리
+              const allVideos = document.querySelectorAll('video');
+              allVideos.forEach(video => {
+                if (video.srcObject) {
+                  const stream = video.srcObject as MediaStream;
+                  stream.getTracks().forEach(track => {
+                    track.stop();
+                    track.enabled = false;
+                  });
+                  video.srcObject = null;
+                  video.pause();
+                  video.load(); // 비디오 요소 완전히 리셋
+                }
+              });
+            };
             
-            // 충분한 지연 후 스캔 중지 및 콜백 호출 (카메라 해제 시간 확보)
+            // 즉시 정리 실행
+            cleanup();
+            
+            // 추가 정리 (약간의 지연 후)
             setTimeout(() => {
+              cleanup();
               setIsScanning(false);
-              onScanSuccess(productName);
-            }, 800);
+              // 더 긴 지연 후 콜백 호출 (카메라 하드웨어 해제 시간 확보)
+              setTimeout(() => {
+                cleanup(); // 한 번 더 정리
+                onScanSuccess(productName);
+              }, 1000);
+            }, 200);
           } else {
             setError(`데이터 매트릭스를 파싱할 수 없습니다.\n스캔된 데이터: ${scannedText.substring(0, 100)}...\n브라우저 콘솔(F12)에서 자세한 오류를 확인하세요.`);
           }
