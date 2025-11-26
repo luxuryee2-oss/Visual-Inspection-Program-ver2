@@ -1,32 +1,56 @@
 /**
- * 데이터 매트릭스에서 제품명을 추출하는 함수
+ * 데이터 매트릭스/QR 코드에서 제품명을 추출하는 함수
  * 
- * 파싱 규칙:
- * - VSBH4 다음 P 필드에서 10글자 추출
- * - SH 다음 E 필드에서 2글자 추출
- * - C 필드에서 C 다음 7-9번째 숫자 추출
+ * 지원하는 형식:
+ * 1. 데이터 매트릭스 형식:
+ *    - VSBH4 다음 P 필드에서 10글자 추출
+ *    - SH 다음 E 필드에서 2글자 추출
+ *    - C 필드에서 C 다음 7-9번째 숫자 추출
  * 
- * @param dataMatrix - 스캔된 데이터 매트릭스 문자열
- * @returns 추출된 제품명 (예: 91958CU810JW007)
+ * 2. QR 코드 형식 (라벨 텍스트 기반):
+ *    - 91958-PI010 형식에서 91958PI010 추출
+ *    - 또는 다른 형식 지원
+ * 
+ * @param scannedData - 스캔된 데이터 매트릭스/QR 코드 문자열
+ * @returns 추출된 제품명 (예: 91958CU810JW007 또는 91958PI010)
  */
-export function parseDataMatrix(dataMatrix: string): string | null {
+export function parseDataMatrix(scannedData: string): string | null {
   try {
-    if (!dataMatrix || dataMatrix.trim().length === 0) {
+    if (!scannedData || scannedData.trim().length === 0) {
       throw new Error('스캔된 데이터가 비어있습니다');
     }
 
-    console.log('원본 스캔 데이터:', dataMatrix);
-    console.log('데이터 길이:', dataMatrix.length);
-    console.log('데이터 문자 코드:', Array.from(dataMatrix).map(c => c.charCodeAt(0)).slice(0, 50));
+    console.log('원본 스캔 데이터:', scannedData);
+    console.log('데이터 길이:', scannedData.length);
+    console.log('데이터 문자 코드:', Array.from(scannedData).map(c => c.charCodeAt(0)).slice(0, 50));
 
-    // 필드 구분자: GS 문자(\x1D) 또는 ␝ 문자를 모두 지원
-    // 실제 스캔된 데이터는 GS 문자를 사용하지만, 예시에서는 ␝로 표시됨
-    const gsChar = '\x1D'; // GS (Group Separator, ASCII 29)
-    
-    // ␝ 문자를 GS 문자로 정규화 (혹시 모를 경우 대비)
-    const normalizedData = dataMatrix.replace(/␝/g, gsChar);
-    
-    console.log('정규화된 데이터:', normalizedData);
+    // 먼저 데이터 매트릭스 형식 시도
+    try {
+      return parseDataMatrixFormat(scannedData);
+    } catch (error) {
+      console.log('데이터 매트릭스 형식 파싱 실패, QR 코드 형식 시도:', error);
+      // 데이터 매트릭스 형식이 아니면 QR 코드 형식 시도
+      return parseQRCodeFormat(scannedData);
+    }
+  } catch (error: any) {
+    console.error('데이터 매트릭스 파싱 오류:', error);
+    console.error('오류 메시지:', error?.message);
+    console.error('스캔된 원본 데이터:', scannedData);
+    return null;
+  }
+}
+
+/**
+ * 데이터 매트릭스 형식 파싱
+ */
+function parseDataMatrixFormat(dataMatrix: string): string {
+  // 필드 구분자: GS 문자(\x1D) 또는 ␝ 문자를 모두 지원
+  const gsChar = '\x1D'; // GS (Group Separator, ASCII 29)
+  
+  // ␝ 문자를 GS 문자로 정규화
+  const normalizedData = dataMatrix.replace(/␝/g, gsChar);
+  
+  console.log('정규화된 데이터:', normalizedData);
     
     // 데이터 매트릭스 예시: [)>␞06␝VSBH4␝P91958CU810PD␝SHB81␝EJW124052␝T241017KKH1@OX15901W␝C020100007000000A2␝␞␄
     
@@ -88,12 +112,49 @@ export function parseDataMatrix(dataMatrix: string): string | null {
     const productName = `${part1}${part2}${part3Numbers.substring(0, 3)}`;
     
     return productName;
-  } catch (error: any) {
-    console.error('데이터 매트릭스 파싱 오류:', error);
-    console.error('오류 메시지:', error?.message);
-    console.error('스캔된 원본 데이터:', dataMatrix);
-    return null;
+}
+
+/**
+ * QR 코드 형식 파싱 (라벨 텍스트 기반)
+ * 예: 91958-PI010 -> 91958PI010
+ */
+function parseQRCodeFormat(qrData: string): string | null {
+  console.log('QR 코드 형식 파싱 시도:', qrData);
+  
+  // 형식 1: 91958-PI010 형식
+  // 하이픈을 제거하고 숫자+문자 조합 추출
+  const format1Match = qrData.match(/(\d{5})-?([A-Z]{2}\d{3})/);
+  if (format1Match) {
+    const part1 = format1Match[1]; // 91958
+    const part2 = format1Match[2]; // PI010
+    return `${part1}${part2}`;
   }
+  
+  // 형식 2: 91958PI010 (하이픈 없음)
+  const format2Match = qrData.match(/(\d{5}[A-Z]{2}\d{3})/);
+  if (format2Match) {
+    return format2Match[1];
+  }
+  
+  // 형식 3: PY24672W 형식에서 숫자 추출
+  const format3Match = qrData.match(/PY(\d+)/);
+  if (format3Match) {
+    return `PY${format3Match[1]}`;
+  }
+  
+  // 형식 4: 라벨의 첫 번째 제품 번호 추출 (91958-PI010)
+  const labelMatch = qrData.match(/(\d{5})-?([A-Z]+)(\d{3})/);
+  if (labelMatch) {
+    return `${labelMatch[1]}${labelMatch[2]}${labelMatch[3]}`;
+  }
+  
+  // 형식 5: 숫자로 시작하는 제품명 추출
+  const numberStartMatch = qrData.match(/(\d{5,}[A-Z0-9]+)/);
+  if (numberStartMatch) {
+    return numberStartMatch[1].replace(/[^A-Z0-9]/g, '').substring(0, 15);
+  }
+  
+  throw new Error('QR 코드 형식을 인식할 수 없습니다');
 }
 
 /**
