@@ -12,7 +12,7 @@ interface PhotoCaptureProps {
   onPhotoChange: (photo: string | null) => void;
 }
 
-export function PhotoCapture({ direction, label, photo, onPhotoChange }: PhotoCaptureProps) {
+export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);

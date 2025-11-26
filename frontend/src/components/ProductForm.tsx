@@ -19,9 +19,6 @@ export interface InspectionData {
   };
 }
 
-// 명시적으로 타입 export (Vite 호환성)
-export type { InspectionData };
-
 interface ProductFormProps {
   onSubmit: (data: InspectionData) => Promise<void>;
 }

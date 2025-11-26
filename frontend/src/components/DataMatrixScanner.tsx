@@ -63,6 +63,9 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
       }
 
       // 스캔 시작
+      if (!videoRef.current) {
+        throw new Error('비디오 요소를 찾을 수 없습니다');
+      }
       codeReader.decodeFromVideoDevice(selectedDeviceId, videoRef.current, (result, err) => {
         if (result) {
           const scannedText = result.getText();
@@ -92,9 +95,7 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
 
   const stopScanning = () => {
     if (codeReaderRef.current) {
-      if (typeof codeReaderRef.current.reset === 'function') {
-        codeReaderRef.current.reset();
-      }
+      // BrowserMultiFormatReader는 reset 메서드가 없으므로 null로 설정
       codeReaderRef.current = null;
     }
 
