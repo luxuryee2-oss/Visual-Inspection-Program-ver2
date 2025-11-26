@@ -19,8 +19,22 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
 
   useEffect(() => {
     return () => {
-      // 컴포넌트 언마운트 시 카메라 정리
-      stopScanning();
+      // 컴포넌트 언마운트 시 카메라 강제 정리
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+          track.enabled = false;
+        });
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+        videoRef.current.pause();
+      }
+      if (codeReaderRef.current) {
+        codeReaderRef.current = null;
+      }
+      setIsScanning(false);
     };
   }, []);
 

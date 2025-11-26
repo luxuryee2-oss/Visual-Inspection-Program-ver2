@@ -35,6 +35,7 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
       if (videoRef.current) {
         videoRef.current.srcObject = null;
         videoRef.current.pause();
+        videoRef.current.load(); // 비디오 요소 완전히 리셋
       }
 
       // 페이지의 모든 비디오 요소에서 스트림 정리
@@ -48,11 +49,27 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
           });
           video.srcObject = null;
           video.pause();
+          video.load(); // 비디오 요소 완전히 리셋
         }
       });
 
       // 충분한 대기 시간 (카메라 하드웨어 해제 시간)
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      
+      // 추가 정리 (대기 후 한 번 더)
+      const allVideos2 = document.querySelectorAll('video');
+      allVideos2.forEach(video => {
+        if (video.srcObject) {
+          const stream = video.srcObject as MediaStream;
+          stream.getTracks().forEach(track => {
+            track.stop();
+            track.enabled = false;
+          });
+          video.srcObject = null;
+          video.pause();
+          video.load();
+        }
+      });
     } catch (e) {
       console.warn('스트림 정리 중 오류:', e);
     }
@@ -99,7 +116,28 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
             },
       };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      // 재시도 로직 (최대 3번)
+      let stream: MediaStream | null = null;
+      let lastError: any = null;
+      
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          break; // 성공하면 루프 종료
+        } catch (err: any) {
+          lastError = err;
+          if (attempt < 2) {
+            // 마지막 시도가 아니면 대기 후 재시도
+            await new Promise(resolve => setTimeout(resolve, 500));
+            // 다시 정리
+            await cleanupAllStreams();
+          }
+        }
+      }
+      
+      if (!stream) {
+        throw lastError || new Error('카메라에 접근할 수 없습니다.');
+      }
 
       streamRef.current = stream;
 
