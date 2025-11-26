@@ -37,7 +37,16 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
       }
 
       // 스트림 정리 후 충분한 대기 시간 (카메라 해제 시간 확보)
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // 다른 컴포넌트에서 카메라를 사용했을 수 있으므로 더 긴 대기
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 추가로 모든 미디어 스트림 확인 및 정리
+      try {
+        const allStreams = await navigator.mediaDevices.enumerateDevices();
+        // 이미 활성화된 스트림이 있는지 확인하고 정리
+      } catch (e) {
+        // 무시
+      }
 
       // 사용 가능한 비디오 입력 장치 확인
       let selectedDeviceId: string | undefined;

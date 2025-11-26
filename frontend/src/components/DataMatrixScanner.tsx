@@ -123,8 +123,24 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
           const productName = parseDataMatrix(scannedText);
           
           if (productName) {
-            stopScanning();
-            onScanSuccess(productName);
+            // 스캔 성공 시 즉시 스트림 정리
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(track => {
+                track.stop();
+              });
+              streamRef.current = null;
+            }
+            if (videoRef.current) {
+              videoRef.current.srcObject = null;
+            }
+            if (codeReaderRef.current) {
+              codeReaderRef.current = null;
+            }
+            // 약간의 지연 후 스캔 중지 및 콜백 호출 (카메라 해제 시간 확보)
+            setTimeout(() => {
+              setIsScanning(false);
+              onScanSuccess(productName);
+            }, 500);
           } else {
             setError(`데이터 매트릭스를 파싱할 수 없습니다.\n스캔된 데이터: ${scannedText.substring(0, 100)}...\n브라우저 콘솔(F12)에서 자세한 오류를 확인하세요.`);
           }
