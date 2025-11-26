@@ -11,12 +11,22 @@
  */
 export function parseDataMatrix(dataMatrix: string): string | null {
   try {
+    if (!dataMatrix || dataMatrix.trim().length === 0) {
+      throw new Error('스캔된 데이터가 비어있습니다');
+    }
+
+    console.log('원본 스캔 데이터:', dataMatrix);
+    console.log('데이터 길이:', dataMatrix.length);
+    console.log('데이터 문자 코드:', Array.from(dataMatrix).map(c => c.charCodeAt(0)).slice(0, 50));
+
     // 필드 구분자: GS 문자(\x1D) 또는 ␝ 문자를 모두 지원
     // 실제 스캔된 데이터는 GS 문자를 사용하지만, 예시에서는 ␝로 표시됨
     const gsChar = '\x1D'; // GS (Group Separator, ASCII 29)
     
     // ␝ 문자를 GS 문자로 정규화 (혹시 모를 경우 대비)
     const normalizedData = dataMatrix.replace(/␝/g, gsChar);
+    
+    console.log('정규화된 데이터:', normalizedData);
     
     // 데이터 매트릭스 예시: [)>␞06␝VSBH4␝P91958CU810PD␝SHB81␝EJW124052␝T241017KKH1@OX15901W␝C020100007000000A2␝␞␄
     
@@ -78,8 +88,10 @@ export function parseDataMatrix(dataMatrix: string): string | null {
     const productName = `${part1}${part2}${part3Numbers.substring(0, 3)}`;
     
     return productName;
-  } catch (error) {
+  } catch (error: any) {
     console.error('데이터 매트릭스 파싱 오류:', error);
+    console.error('오류 메시지:', error?.message);
+    console.error('스캔된 원본 데이터:', dataMatrix);
     return null;
   }
 }

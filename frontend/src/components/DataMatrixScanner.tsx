@@ -69,7 +69,9 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
       codeReader.decodeFromVideoDevice(selectedDeviceId, videoRef.current, (result, err) => {
         if (result) {
           const scannedText = result.getText();
-          console.log('스캔된 데이터:', scannedText);
+          console.log('스캔된 원본 데이터:', scannedText);
+          console.log('스캔된 데이터 타입:', result.getBarcodeFormat());
+          console.log('스캔된 데이터 길이:', scannedText.length);
           
           // 데이터 매트릭스 파싱
           const productName = parseDataMatrix(scannedText);
@@ -78,7 +80,7 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
             stopScanning();
             onScanSuccess(productName);
           } else {
-            setError('데이터 매트릭스를 파싱할 수 없습니다. 다시 시도해주세요.');
+            setError(`데이터 매트릭스를 파싱할 수 없습니다.\n스캔된 데이터: ${scannedText.substring(0, 100)}...\n브라우저 콘솔(F12)에서 자세한 오류를 확인하세요.`);
           }
         }
         
