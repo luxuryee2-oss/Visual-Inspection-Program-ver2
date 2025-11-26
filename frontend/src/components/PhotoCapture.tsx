@@ -26,7 +26,9 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
 
       // 기존 스트림이 있으면 먼저 정리
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+        });
         streamRef.current = null;
       }
 
@@ -34,24 +36,98 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
         videoRef.current.srcObject = null;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment', // 후면 카메라
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-      });
+      // 스트림 정리 후 충분한 대기 시간 (카메라 해제 시간 확보)
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // 사용 가능한 비디오 입력 장치 확인
+      let selectedDeviceId: string | undefined;
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        
+        // 후면 카메라 우선 선택
+        const backCamera = videoDevices.find(device => 
+          device.label.toLowerCase().includes('back') || 
+          device.label.toLowerCase().includes('rear') ||
+          device.label.toLowerCase().includes('environment')
+        );
+        
+        selectedDeviceId = backCamera?.deviceId || videoDevices[0]?.deviceId;
+      } catch (e) {
+        console.warn('장치 열거 실패, 기본 설정 사용:', e);
+      }
+
+      // 카메라 접근 (더 유연한 설정)
+      const constraints: MediaStreamConstraints = {
+        video: selectedDeviceId
+          ? { 
+              deviceId: { exact: selectedDeviceId },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            }
+          : { 
+              facingMode: 'environment', // 후면 카메라
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            },
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       streamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        
+        // 비디오 메타데이터 로드 대기
+        await new Promise((resolve, reject) => {
+          if (!videoRef.current) {
+            reject(new Error('비디오 요소를 찾을 수 없습니다'));
+            return;
+          }
+          
+          const timeout = setTimeout(() => {
+            reject(new Error('비디오 로드 시간 초과'));
+          }, 5000);
+          
+          videoRef.current!.onloadedmetadata = () => {
+            clearTimeout(timeout);
+            resolve(null);
+          };
+          
+          videoRef.current!.onerror = (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          };
+        });
+        
         await videoRef.current.play();
       }
     } catch (err: any) {
       console.error('카메라 접근 오류:', err);
-      setError(err.message || '카메라에 접근할 수 없습니다.');
+      let errorMessage = '카메라에 접근할 수 없습니다.';
+      
+      if (err.name === 'NotAllowedError') {
+        errorMessage = '카메라 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = '카메라를 찾을 수 없습니다.';
+      } else if (err.name === 'NotReadableError' || err.message?.includes('Could not start video source')) {
+        errorMessage = '카메라가 다른 앱에서 사용 중이거나 접근할 수 없습니다. 다른 앱을 종료하고 다시 시도해주세요.';
+      } else {
+        errorMessage = err.message || errorMessage;
+      }
+      
+      setError(errorMessage);
       setIsCapturing(false);
+      
+      // 오류 발생 시 스트림 정리
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
     }
   };
 
