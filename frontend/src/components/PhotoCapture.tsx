@@ -24,6 +24,16 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
       setError(null);
       setIsCapturing(true);
 
+      // 기존 스트림이 있으면 먼저 정리
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment', // 후면 카메라
@@ -196,7 +206,6 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={handleFileSelect}
               className="hidden"
             />
