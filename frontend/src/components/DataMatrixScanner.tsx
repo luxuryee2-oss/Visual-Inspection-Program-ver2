@@ -127,20 +127,37 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
             if (streamRef.current) {
               streamRef.current.getTracks().forEach(track => {
                 track.stop();
+                track.enabled = false;
               });
               streamRef.current = null;
             }
             if (videoRef.current) {
               videoRef.current.srcObject = null;
+              videoRef.current.pause();
             }
             if (codeReaderRef.current) {
               codeReaderRef.current = null;
             }
-            // 약간의 지연 후 스캔 중지 및 콜백 호출 (카메라 해제 시간 확보)
+            
+            // 페이지의 모든 비디오 요소에서 스트림 정리
+            const allVideos = document.querySelectorAll('video');
+            allVideos.forEach(video => {
+              if (video.srcObject) {
+                const stream = video.srcObject as MediaStream;
+                stream.getTracks().forEach(track => {
+                  track.stop();
+                  track.enabled = false;
+                });
+                video.srcObject = null;
+                video.pause();
+              }
+            });
+            
+            // 충분한 지연 후 스캔 중지 및 콜백 호출 (카메라 해제 시간 확보)
             setTimeout(() => {
               setIsScanning(false);
               onScanSuccess(productName);
-            }, 500);
+            }, 800);
           } else {
             setError(`데이터 매트릭스를 파싱할 수 없습니다.\n스캔된 데이터: ${scannedText.substring(0, 100)}...\n브라우저 콘솔(F12)에서 자세한 오류를 확인하세요.`);
           }

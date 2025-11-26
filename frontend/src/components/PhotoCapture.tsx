@@ -19,34 +19,52 @@ export function PhotoCapture({ label, photo, onPhotoChange }: PhotoCaptureProps)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // 모든 활성 미디어 스트림 강제 정리
+  const cleanupAllStreams = async () => {
+    try {
+      // 현재 스트림 정리
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+          track.enabled = false;
+        });
+        streamRef.current = null;
+      }
+
+      // 비디오 요소 정리
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+        videoRef.current.pause();
+      }
+
+      // 페이지의 모든 비디오 요소에서 스트림 정리
+      const allVideos = document.querySelectorAll('video');
+      allVideos.forEach(video => {
+        if (video.srcObject) {
+          const stream = video.srcObject as MediaStream;
+          stream.getTracks().forEach(track => {
+            track.stop();
+            track.enabled = false;
+          });
+          video.srcObject = null;
+          video.pause();
+        }
+      });
+
+      // 충분한 대기 시간 (카메라 하드웨어 해제 시간)
+      await new Promise(resolve => setTimeout(resolve, 800));
+    } catch (e) {
+      console.warn('스트림 정리 중 오류:', e);
+    }
+  };
+
   const startCamera = async () => {
     try {
       setError(null);
       setIsCapturing(true);
 
-      // 기존 스트림이 있으면 먼저 정리
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => {
-          track.stop();
-        });
-        streamRef.current = null;
-      }
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-
-      // 스트림 정리 후 충분한 대기 시간 (카메라 해제 시간 확보)
-      // 다른 컴포넌트에서 카메라를 사용했을 수 있으므로 더 긴 대기
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // 추가로 모든 미디어 스트림 확인 및 정리
-      try {
-        const allStreams = await navigator.mediaDevices.enumerateDevices();
-        // 이미 활성화된 스트림이 있는지 확인하고 정리
-      } catch (e) {
-        // 무시
-      }
+      // 모든 스트림 강제 정리
+      await cleanupAllStreams();
 
       // 사용 가능한 비디오 입력 장치 확인
       let selectedDeviceId: string | undefined;
