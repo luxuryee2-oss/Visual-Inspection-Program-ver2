@@ -158,18 +158,25 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
   };
 
   const stopScanning = () => {
+    // 코드 리더 정리
     if (codeReaderRef.current) {
       // BrowserMultiFormatReader는 reset 메서드가 없으므로 null로 설정
       codeReaderRef.current = null;
     }
 
+    // 스트림 정리 (모든 트랙 명시적으로 중지)
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        track.enabled = false;
+      });
       streamRef.current = null;
     }
 
+    // 비디오 요소 정리
     if (videoRef.current) {
       videoRef.current.srcObject = null;
+      videoRef.current.pause();
     }
 
     setIsScanning(false);
