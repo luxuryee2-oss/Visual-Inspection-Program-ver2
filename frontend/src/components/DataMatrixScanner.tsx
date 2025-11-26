@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
+import { DecodeHintType, BarcodeFormat } from '@zxing/library';
 import { Button } from '@/components/ui/button';
 import { parseDataMatrix } from '@/utils/datamatrixParser';
 import { Scan, X } from 'lucide-react';
@@ -28,7 +29,12 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
       setError(null);
       setIsScanning(true);
 
-      const codeReader = new BrowserMultiFormatReader();
+      // ZXing 스캐너 설정 (Data Matrix 우선)
+      const hints = new Map();
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.DATA_MATRIX, BarcodeFormat.QR_CODE]);
+      hints.set(DecodeHintType.TRY_HARDER, true);
+      
+      const codeReader = new BrowserMultiFormatReader(hints);
       codeReaderRef.current = codeReader;
 
       // 카메라 접근
@@ -47,11 +53,15 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
 
       const selectedDeviceId = backCamera?.deviceId || videoInputDevices[0].deviceId;
 
-      // 비디오 스트림 시작
+      // 비디오 스트림 시작 (고해상도 및 자동 포커스 설정)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: { exact: selectedDeviceId },
           facingMode: 'environment', // 후면 카메라
+          width: { ideal: 3840, min: 1920 }, // 고해상도
+          height: { ideal: 2160, min: 1080 },
+          focusMode: 'continuous', // 자동 포커스
+          zoom: { ideal: 2.0 }, // 줌 설정 (지원되는 경우)
         },
       });
 
@@ -59,13 +69,49 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        
+        // 비디오 메타데이터 로드 대기
+        await new Promise((resolve) => {
+          if (videoRef.current) {
+            videoRef.current.onloadedmetadata = () => {
+              resolve(null);
+            };
+          } else {
+            resolve(null);
+          }
+        });
+        
         await videoRef.current.play();
+        
+        // 카메라 설정 최적화 (지원되는 경우)
+        const track = stream.getVideoTracks()[0];
+        if (track && track.getCapabilities) {
+          const capabilities = track.getCapabilities();
+          const settings = track.getSettings();
+          
+          // 자동 포커스 설정
+          if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+            await track.applyConstraints({
+              advanced: [{ focusMode: 'continuous' }],
+            });
+          }
+          
+          // 줌 설정 (지원되는 경우)
+          if (capabilities.zoom && capabilities.zoom.max > 1) {
+            const zoomValue = Math.min(2.0, capabilities.zoom.max);
+            await track.applyConstraints({
+              advanced: [{ zoom: zoomValue }],
+            });
+          }
+        }
       }
 
-      // 스캔 시작
+      // 스캔 시작 (고해상도 스캔을 위해 설정)
       if (!videoRef.current) {
         throw new Error('비디오 요소를 찾을 수 없습니다');
       }
+      
+      // ZXing 스캐너 설정 개선
       codeReader.decodeFromVideoDevice(selectedDeviceId, videoRef.current, (result, err) => {
         if (result) {
           const scannedText = result.getText();
@@ -156,9 +202,19 @@ export function DataMatrixScanner({ onScanSuccess, onClose }: DataMatrixScannerP
                   className="w-full h-full object-cover"
                   playsInline
                   muted
+                  autoFocus
+                  style={{
+                    transform: 'scale(1.5)', // 확대
+                    transformOrigin: 'center',
+                  }}
                 />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="border-4 border-primary w-3/4 h-3/4 rounded-none" />
+                  <div className="absolute top-2 left-2 right-2 text-center">
+                    <p className="text-white text-xs bg-black/50 px-2 py-1 rounded">
+                      데이터 매트릭스를 프레임 안에 맞춰주세요
+                    </p>
+                  </div>
                 </div>
               </div>
               <Button
