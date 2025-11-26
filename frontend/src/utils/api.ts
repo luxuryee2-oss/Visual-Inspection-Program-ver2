@@ -1,6 +1,8 @@
 import type { InspectionData } from '@/components/ProductForm';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+// Vercel 배포 환경에서는 상대 경로 사용, 로컬에서는 localhost 사용
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.PROD ? '/api' : 'http://localhost:3000/api');
 
 interface ApiResponse {
   success: boolean;
