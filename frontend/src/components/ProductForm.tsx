@@ -75,9 +75,11 @@ export function ProductForm({ onSubmit }: ProductFormProps) {
         },
       });
       alert('저장되었습니다.');
-    } catch (error) {
+    } catch (error: any) {
       console.error('저장 오류:', error);
-      alert('저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+      const errorMessage = error?.message || '저장 중 오류가 발생했습니다. 다시 시도해주세요.';
+      console.error('상세 오류:', error);
+      alert(`저장 오류: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }

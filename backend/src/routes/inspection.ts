@@ -36,8 +36,16 @@ router.post('/', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('저장 오류:', error);
+    const errorMessage = error?.message || '데이터 저장 중 오류가 발생했습니다.';
+    console.error('상세 오류 정보:', {
+      message: errorMessage,
+      stack: error?.stack,
+      name: error?.name,
+    });
     res.status(500).json({
-      error: error.message || '데이터 저장 중 오류가 발생했습니다.',
+      success: false,
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
     });
   }
 });
