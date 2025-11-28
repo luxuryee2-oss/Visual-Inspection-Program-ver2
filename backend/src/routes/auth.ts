@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import prisma from '../lib/prisma';
 
 const router = express.Router();
@@ -51,10 +51,12 @@ router.post('/register', async (req: Request, res: Response) => {
     });
 
     // JWT 토큰 생성
+    const jwtSecret = process.env.JWT_SECRET || 'default-secret-change-in-production';
+    const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      process.env.JWT_SECRET || 'default-secret-change-in-production',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      jwtSecret,
+      { expiresIn } as SignOptions
     );
 
     res.status(201).json({
@@ -104,10 +106,12 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // JWT 토큰 생성
+    const jwtSecret = process.env.JWT_SECRET || 'default-secret-change-in-production';
+    const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      process.env.JWT_SECRET || 'default-secret-change-in-production',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      jwtSecret,
+      { expiresIn } as SignOptions
     );
 
     res.json({

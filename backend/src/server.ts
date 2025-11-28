@@ -31,24 +31,27 @@ app.get('/api/test', (req, res) => {
 });
 
 // 라우트 로딩 및 등록
-try {
-  console.log('🔍 라우터 파일 로딩 시도...');
-  
-  // 인증 라우트
-  const authRoutes = require('./routes/auth').default;
-  app.use('/api/auth', authRoutes);
-  console.log('✅ 인증 라우트 등록 완료: /api/auth');
-  
-  // 검사 데이터 라우트
-  const inspectionRoutes = require('./routes/inspection').default;
-  app.use('/api/inspection', inspectionRoutes);
-  console.log('✅ 검사 데이터 라우트 등록 완료: /api/inspection');
-  
-  console.log('✅ 모든 라우트 등록 완료!');
-} catch (error: any) {
-  console.error('❌ 라우터 로딩 실패:', error);
-  console.error('❌ 오류 스택:', error.stack);
-}
+(async () => {
+  try {
+    console.log('🔍 라우터 파일 로딩 시도...');
+    
+    // 인증 라우트
+    const authRoutes = (await import('./routes/auth')).default;
+    app.use('/api/auth', authRoutes);
+    console.log('✅ 인증 라우트 등록 완료: /api/auth');
+    
+    // 검사 데이터 라우트
+    const inspectionRoutes = (await import('./routes/inspection')).default;
+    app.use('/api/inspection', inspectionRoutes);
+    console.log('✅ 검사 데이터 라우트 등록 완료: /api/inspection');
+    
+    console.log('✅ 모든 라우트 등록 완료!');
+  } catch (error: any) {
+    console.error('❌ 라우터 로딩 실패:', error);
+    console.error('❌ 오류 스택:', error.stack);
+    console.error('⚠️  일부 라우트가 로드되지 않았지만 서버는 계속 실행됩니다.');
+  }
+})();
 
 app.listen(PORT, () => {
   console.log(`\n`);
