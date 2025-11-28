@@ -8,26 +8,14 @@ let prisma: any = null;
 function getPrismaClient() {
   if (!prisma) {
     try {
-      console.log('Prisma 클라이언트 로드 시도...');
-      let PrismaClient;
-      try {
-        const prismaModule = require('@prisma/client');
-        PrismaClient = prismaModule.PrismaClient || prismaModule.default?.PrismaClient || prismaModule;
-      } catch (requireError: any) {
-        console.error('@prisma/client 모듈 로드 실패:', requireError?.message);
-        throw new Error(`@prisma/client 모듈을 찾을 수 없습니다: ${requireError?.message}`);
-      }
-      
-      if (!PrismaClient) {
-        throw new Error('PrismaClient를 찾을 수 없습니다.');
-      }
-      
+      const { PrismaClient } = require('@prisma/client');
       prisma = new PrismaClient({
-        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+        log: ['error'],
       });
-      console.log('Prisma 클라이언트 초기화 성공');
     } catch (error: any) {
       console.error('Prisma 클라이언트 초기화 실패:', error);
+      console.error('에러 메시지:', error?.message);
+      console.error('에러 스택:', error?.stack);
       throw new Error(`데이터베이스 클라이언트를 초기화할 수 없습니다: ${error?.message || '알 수 없는 오류'}`);
     }
   }

@@ -13,18 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('DATABASE_URL 존재:', !!process.env.DATABASE_URL);
 
     // Prisma Client 가져오기
-    let PrismaClient;
-    try {
-      const prismaModule = require('@prisma/client');
-      PrismaClient = prismaModule.PrismaClient || prismaModule.default?.PrismaClient || prismaModule;
-    } catch (error: any) {
-      return res.status(500).json({
-        success: false,
-        error: 'Prisma Client를 찾을 수 없습니다.',
-        details: error?.message,
-      });
-    }
-
+    const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient({
       log: ['error'],
     });
