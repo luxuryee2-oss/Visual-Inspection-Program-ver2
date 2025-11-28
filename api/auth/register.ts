@@ -9,12 +9,18 @@ function getPrismaClient() {
   if (!prisma) {
     try {
       const { PrismaClient } = require('@prisma/client');
+      if (!PrismaClient) {
+        throw new Error('PrismaClient를 찾을 수 없습니다. Prisma 클라이언트가 생성되었는지 확인해주세요.');
+      }
       prisma = new PrismaClient({
         log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
       });
-    } catch (error) {
+      console.log('Prisma 클라이언트 초기화 성공');
+    } catch (error: any) {
       console.error('Prisma 클라이언트 초기화 실패:', error);
-      throw new Error('데이터베이스 클라이언트를 초기화할 수 없습니다.');
+      console.error('에러 메시지:', error?.message);
+      console.error('에러 스택:', error?.stack);
+      throw new Error(`데이터베이스 클라이언트를 초기화할 수 없습니다: ${error?.message || '알 수 없는 오류'}`);
     }
   }
   return prisma;
@@ -39,7 +45,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { email, username, password, name } = req.body;
     
     // Prisma 클라이언트 가져오기
-    const prismaClient = getPrismaClient();
+    let prismaClient;
+    try {
+      prismaClient = getPrismaClient();
+    } catch (prismaError: any) {
+      console.error('Prisma 클라이언트 초기화 오류:', prismaError);
+      return res.status(500).json({
+        success: false,
+        error: '데이터베이스 클라이언트를 초기화할 수 없습니다. 데이터베이스 설정을 확인해주세요.',
+        details: process.env.NODE_ENV === 'development' ? prismaError?.message : undefined,
+      });
+    }
 
     if (!email || !username || !password) {
       return res.status(400).json({
