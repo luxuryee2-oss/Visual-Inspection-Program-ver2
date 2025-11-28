@@ -42,14 +42,23 @@ DATABASE_URL="postgres://user:password@host:port/database?sslmode=require"
 
 ## 4. Prisma 마이그레이션 실행
 
-### 로컬에서 마이그레이션 실행:
+### 방법 A: 자동 마이그레이션 (권장)
+`vercel.json`에 마이그레이션 명령이 포함되어 있어 배포 시 자동으로 실행됩니다.
+
+### 방법 B: 수동 마이그레이션
+배포 후 다음 엔드포인트를 호출하여 마이그레이션을 실행할 수 있습니다:
+```
+POST https://your-app.vercel.app/api/migrate
+```
+
+### 방법 C: 로컬에서 마이그레이션 실행
+로컬에서 실행하려면:
 ```bash
 cd backend
 npx prisma migrate dev --name init
 ```
 
-### Vercel에 배포 시 자동 마이그레이션:
-`vercel.json`에 빌드 후 마이그레이션 명령 추가 (선택사항)
+**중요**: Vercel Postgres를 사용하는 경우, 로컬에서 마이그레이션을 실행하려면 Vercel 대시보드에서 `.env.local` 파일의 `DATABASE_URL`을 복사하여 로컬 `.env` 파일에 추가해야 합니다.
 
 ## 5. Prisma 클라이언트 재생성
 
