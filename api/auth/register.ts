@@ -1,20 +1,24 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
 
-// Prisma 클라이언트 싱글톤 패턴 (Vercel Serverless Functions용)
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+// Prisma 클라이언트 지연 로딩 (Vercel Serverless Functions용)
+let prisma: any = null;
 
-const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+function getPrismaClient() {
+  if (!prisma) {
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      prisma = new PrismaClient({
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      });
+    } catch (error) {
+      console.error('Prisma 클라이언트 초기화 실패:', error);
+      throw new Error('데이터베이스 클라이언트를 초기화할 수 없습니다.');
+    }
+  }
+  return prisma;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS 헤더 추가
@@ -32,11 +36,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Prisma 클라이언트 초기화 확인
-    if (!prisma) {
-      throw new Error('Prisma 클라이언트가 초기화되지 않았습니다.');
-    }
     const { email, username, password, name } = req.body;
+    
+    // Prisma 클라이언트 가져오기
+    const prismaClient = getPrismaClient();
 
     if (!email || !username || !password) {
       return res.status(400).json({
@@ -44,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prismaClient.user.findFirst({
       where: {
         OR: [{ email }, { username }],
       },
@@ -58,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
+    const user = await prismaClient.user.create({
       data: {
         email,
         username,

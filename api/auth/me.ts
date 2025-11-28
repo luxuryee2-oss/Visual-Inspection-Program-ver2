@@ -1,19 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
 
-// Prisma 클라이언트 싱글톤 패턴 (Vercel Serverless Functions용)
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+// Prisma 클라이언트 지연 로딩 (Vercel Serverless Functions용)
+let prisma: any = null;
 
-const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+function getPrismaClient() {
+  if (!prisma) {
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      prisma = new PrismaClient({
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      });
+    } catch (error) {
+      console.error('Prisma 클라이언트 초기화 실패:', error);
+      throw new Error('데이터베이스 클라이언트를 초기화할 수 없습니다.');
+    }
+  }
+  return prisma;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS 헤더 추가
@@ -42,7 +46,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       process.env.JWT_SECRET || 'default-secret-change-in-production'
     ) as any;
     
-    const user = await prisma.user.findUnique({
+    // Prisma 클라이언트 가져오기
+    const prismaClient = getPrismaClient();
+    
+    const user = await prismaClient.user.findUnique({
       where: { id: decoded.userId },
       select: {
         id: true,
