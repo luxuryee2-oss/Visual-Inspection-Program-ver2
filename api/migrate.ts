@@ -9,66 +9,118 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { execSync } = require('child_process');
-    const path = require('path');
-    const fs = require('fs');
-
     console.log('마이그레이션 시작...');
     console.log('DATABASE_URL 존재:', !!process.env.DATABASE_URL);
-    console.log('현재 작업 디렉토리:', process.cwd());
 
-    // prisma.config.ts 파일이 backend 디렉토리에 있는지 확인
-    const configPath = path.join(process.cwd(), 'backend', 'prisma.config.ts');
-    const schemaPath = path.join(process.cwd(), 'backend', 'prisma', 'schema.prisma');
-    
-    console.log('Config 파일 경로:', configPath);
-    console.log('Config 파일 존재:', fs.existsSync(configPath));
-    console.log('Schema 파일 경로:', schemaPath);
-    console.log('Schema 파일 존재:', fs.existsSync(schemaPath));
-
-    // Prisma 마이그레이션 실행
-    // Prisma 7에서는 prisma.config.ts를 사용하므로 --config 옵션 사용
-    let result;
+    // Prisma Client 가져오기
+    let PrismaClient;
     try {
-      // 먼저 backend 디렉토리로 이동하여 실행
-      result = execSync(
-        'npx prisma migrate deploy',
-        {
-          cwd: path.join(process.cwd(), 'backend'),
-          env: { ...process.env },
-          encoding: 'utf8',
-        }
-      );
-    } catch (execError: any) {
-      // --schema 옵션으로 재시도
-      console.log('--schema 옵션으로 재시도...');
-      result = execSync(
-        'npx prisma migrate deploy --schema=prisma/schema.prisma',
-        {
-          cwd: path.join(process.cwd(), 'backend'),
-          env: { ...process.env },
-          encoding: 'utf8',
-        }
-      );
+      const prismaModule = require('@prisma/client');
+      PrismaClient = prismaModule.PrismaClient || prismaModule.default?.PrismaClient || prismaModule;
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: 'Prisma Client를 찾을 수 없습니다.',
+        details: error?.message,
+      });
     }
 
-    console.log('마이그레이션 결과:', result);
-
-    res.json({
-      success: true,
-      message: '데이터베이스 마이그레이션이 완료되었습니다.',
-      output: result,
+    const prisma = new PrismaClient({
+      log: ['error'],
     });
+
+    try {
+      // 테이블이 존재하는지 확인하고, 없으면 생성
+      console.log('데이터베이스 연결 확인...');
+      
+      // User 테이블 생성
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "User" (
+          "id" TEXT NOT NULL,
+          "email" TEXT NOT NULL,
+          "username" TEXT NOT NULL,
+          "password" TEXT NOT NULL,
+          "name" TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL,
+          CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+        )
+      `);
+
+      // User 테이블에 unique 제약 조건 추가
+      await prisma.$executeRawUnsafe(`
+        DO $$ 
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'User_email_key'
+          ) THEN
+            ALTER TABLE "User" ADD CONSTRAINT "User_email_key" UNIQUE ("email");
+          END IF;
+        END $$;
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        DO $$ 
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'User_username_key'
+          ) THEN
+            ALTER TABLE "User" ADD CONSTRAINT "User_username_key" UNIQUE ("username");
+          END IF;
+        END $$;
+      `);
+
+      // Inspection 테이블 생성
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Inspection" (
+          "id" TEXT NOT NULL,
+          "productName" TEXT NOT NULL,
+          "inspector" TEXT NOT NULL,
+          "notes" TEXT,
+          "photos" TEXT NOT NULL,
+          "userId" TEXT NOT NULL,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL,
+          CONSTRAINT "Inspection_pkey" PRIMARY KEY ("id")
+        )
+      `);
+
+      // Inspection 테이블에 외래 키 추가
+      await prisma.$executeRawUnsafe(`
+        DO $$ 
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'Inspection_userId_fkey'
+          ) THEN
+            ALTER TABLE "Inspection" ADD CONSTRAINT "Inspection_userId_fkey" 
+            FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+          END IF;
+        END $$;
+      `);
+
+      // 인덱스 생성
+      await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "Inspection_userId_idx" ON "Inspection"("userId");
+      `);
+
+      console.log('마이그레이션 완료');
+
+      res.json({
+        success: true,
+        message: '데이터베이스 마이그레이션이 완료되었습니다.',
+      });
+    } catch (dbError: any) {
+      console.error('데이터베이스 오류:', dbError);
+      throw dbError;
+    } finally {
+      await prisma.$disconnect();
+    }
   } catch (error: any) {
     console.error('마이그레이션 오류:', error);
-    console.error('에러 메시지:', error?.message);
-    console.error('에러 스택:', error?.stack);
     res.status(500).json({
       success: false,
       error: error?.message || '마이그레이션 실패',
-      output: error?.stdout || error?.stderr || error?.message,
       details: error?.stack,
     });
   }
 }
-
