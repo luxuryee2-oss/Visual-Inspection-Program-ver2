@@ -1,170 +1,95 @@
-# 저장 문제 해결 가이드
+# Prisma 클라이언트 초기화 오류 해결 가이드
 
-## 저장이 안 될 때 확인 사항
+## 문제 증상
+- 회원가입 시 "데이터베이스 클라이언트를 초기화할 수 없습니다" 오류
+- Vercel Functions에서 500 Internal Server Error
 
-### 1단계: 백엔드 서버 확인
+## 확인 사항
 
-#### 서버가 실행 중인가요?
+### 1. Vercel 빌드 로그 확인
+Vercel 대시보드 → Deployments → 최신 배포 → Build Logs에서 확인:
+
+1. **Prisma 클라이언트 생성 확인**
+   ```
+   npx prisma generate --schema=backend/prisma/schema.prisma
+   ```
+   이 명령이 성공했는지 확인
+
+2. **마이그레이션 확인**
+   ```
+   npx prisma migrate deploy --schema=backend/prisma/schema.prisma
+   ```
+   이 명령이 성공했는지 확인
+
+### 2. Vercel Functions 로그 확인
+Vercel 대시보드 → Functions 탭 → `/api/auth/register` 함수 클릭
+
+로그에서 다음 메시지 확인:
+- "Prisma 클라이언트 로드 시도..."
+- "@prisma/client 모듈 로드 실패" 또는 "Prisma 모듈 로드 성공"
+- "node_modules/@prisma/client 존재: true/false"
+
+### 3. 환경 변수 확인
+Vercel 대시보드 → Settings → Environment Variables:
+
+- `DATABASE_URL`: Postgres 데이터베이스 연결 문자열 (자동 생성됨)
+- `JWT_SECRET`: JWT 토큰 서명용 비밀 키 (수동 설정 필요)
+
+### 4. 데이터베이스 연결 테스트
+배포 후 다음 URL로 테스트:
+```
+https://visual-inspection-program-ver2.vercel.app/api/test-db
+```
+
+## 해결 방법
+
+### 방법 1: 빌드 로그에서 오류 확인
+빌드 로그에 Prisma 관련 오류가 있다면:
+1. `DATABASE_URL` 환경 변수가 설정되어 있는지 확인
+2. Prisma 스키마 파일 경로가 올바른지 확인 (`backend/prisma/schema.prisma`)
+
+### 방법 2: 수동 마이그레이션 실행
+배포 후 다음 엔드포인트 호출:
+```
+POST https://visual-inspection-program-ver2.vercel.app/api/migrate
+```
+
+### 방법 3: Prisma 클라이언트 재생성
+로컬에서:
 ```bash
 cd backend
-npm run dev
+npx prisma generate --schema=prisma/schema.prisma
 ```
 
-서버가 실행되면 다음과 같은 메시지가 표시됩니다:
-```
-서버가 포트 3000에서 실행 중입니다.
-```
-
-#### Health Check 확인
-브라우저나 터미널에서:
+그리고 다시 푸시:
 ```bash
-# 브라우저
-http://localhost:3000/api/health
-
-# 또는 터미널
-curl http://localhost:3000/api/health
+git add .
+git commit -m "Regenerate Prisma client"
+git push origin main
 ```
 
-정상이면 `{"status":"ok"}` 응답이 옵니다.
+## 일반적인 원인
 
-### 2단계: 프론트엔드에서 서버 연결 확인
+1. **Prisma 클라이언트가 생성되지 않음**
+   - 빌드 로그에서 `prisma generate` 명령 실패 확인
+   - `postinstall` 스크립트가 실행되지 않음
 
-#### 브라우저 콘솔 확인
-1. 스마트폰 크롬에서 F12 또는 개발자 도구 열기
-2. Console 탭 확인
-3. Network 탭에서 API 요청 상태 확인
+2. **DATABASE_URL이 설정되지 않음**
+   - Vercel Postgres를 생성했지만 환경 변수가 추가되지 않음
+   - Settings → Environment Variables에서 확인
 
-#### API 주소 확인
-프론트엔드 코드에서 API 주소가 올바른지 확인:
-- 로컬 개발: `http://localhost:3000/api` (같은 컴퓨터에서만 접근 가능)
-- 스마트폰 접근: 컴퓨터의 로컬 IP 주소 사용 (예: `http://192.168.0.100:3000/api`)
+3. **마이그레이션이 실행되지 않음**
+   - 데이터베이스 테이블이 생성되지 않음
+   - `/api/migrate` 엔드포인트로 수동 실행
 
-### 3단계: 백엔드 서버 로그 확인
+4. **Prisma 클라이언트 경로 문제**
+   - Vercel Functions는 루트의 `node_modules`를 사용
+   - Prisma 클라이언트가 루트에 생성되어야 함
 
-저장을 시도할 때 **백엔드 서버 콘솔**에 상세한 로그가 출력됩니다:
+## 다음 단계
 
-#### 정상적인 로그 예시:
-```
-============================================================
-📥 새로운 저장 요청 수신
-============================================================
-요청 데이터: {...}
-✅ 유효성 검사 통과
-🔄 SharePoint 저장 시작...
-🔐 SharePoint 저장 함수 시작
-환경 변수 확인: {...}
-🔑 Azure 액세스 토큰 가져오는 중...
-✅ 액세스 토큰 획득 성공
-사이트 ID 자동 조회 중...
-...
-✅ 저장 완료! (소요 시간: 1234 ms)
-============================================================
-```
+1. Vercel 빌드 로그를 확인하고 오류 메시지를 공유해주세요
+2. Vercel Functions 로그를 확인하고 "Prisma 클라이언트 로드 시도..." 이후의 메시지를 공유해주세요
+3. `/api/test-db` 엔드포인트 결과를 공유해주세요
 
-#### 오류가 발생한 경우:
-```
-============================================================
-❌ 저장 오류 발생! (소요 시간: 500 ms)
-============================================================
-오류 타입: Error
-오류 메시지: ...
-오류 스택: ...
-```
-
-### 4단계: 환경 변수 확인
-
-`backend/.env` 파일에 다음 설정이 올바른지 확인:
-
-```env
-# Azure 인증 (필수)
-AZURE_CLIENT_ID=...
-AZURE_CLIENT_SECRET=...
-AZURE_TENANT_ID=...
-
-# SharePoint 설정
-SHAREPOINT_SITE_URL=https://kyungshino365.sharepoint.com/sites/checksheet
-SHAREPOINT_FOLDER_PATH=InspectionData
-SHAREPOINT_LIST_ID=List45
-```
-
-### 5단계: 일반적인 오류 및 해결 방법
-
-#### 오류: "서버에 연결할 수 없습니다"
-**원인:**
-- 백엔드 서버가 실행되지 않음
-- API 주소가 잘못됨
-- 방화벽 문제
-
-**해결:**
-1. 백엔드 서버 실행 확인
-2. API 주소 확인 (같은 네트워크의 IP 주소 사용)
-3. 방화벽에서 포트 3000 허용
-
-#### 오류: "Azure 인증 설정이 완료되지 않았습니다"
-**원인:**
-- `.env` 파일이 없거나 환경 변수가 설정되지 않음
-
-**해결:**
-1. `backend/.env` 파일 생성
-2. 필요한 환경 변수 모두 설정
-3. 서버 재시작
-
-#### 오류: "SharePoint 설정이 완료되지 않았습니다"
-**원인:**
-- SharePoint 사이트 URL이 잘못됨
-- Azure 앱 등록 권한 문제
-
-**해결:**
-1. `SHAREPOINT_SITE_URL` 확인
-2. Azure Portal에서 앱 권한 확인 (`Sites.ReadWrite.All`)
-3. 관리자 동의 완료 여부 확인
-
-#### 오류: "리스트 저장 실패"
-**원인:**
-- 리스트 ID가 잘못됨
-- 리스트 컬럼 이름이 맞지 않음
-- 권한 문제
-
-**해결:**
-1. 디버깅 API로 리스트 정보 확인: `http://localhost:3000/api/inspection/list-info`
-2. 리스트 컬럼 이름 확인
-3. 코드의 컬럼 매핑 수정
-
-### 6단계: 디버깅 도구 사용
-
-#### 리스트 정보 확인
-```
-GET http://localhost:3000/api/inspection/list-info
-```
-
-이 API는 리스트의 모든 컬럼 정보를 보여줍니다.
-
-#### 상세 로그 확인
-저장 시도 시 백엔드 서버 콘솔에서:
-- 각 단계의 성공/실패 상태
-- 사용 가능한 컬럼 목록
-- 시도한 필드 매핑
-- 상세 오류 메시지
-
-## 빠른 체크리스트
-
-- [ ] 백엔드 서버가 실행 중인가요?
-- [ ] Health check API가 정상 응답하나요?
-- [ ] `.env` 파일이 올바르게 설정되어 있나요?
-- [ ] 브라우저 콘솔에 오류가 있나요?
-- [ ] 백엔드 서버 콘솔 로그를 확인했나요?
-- [ ] API 주소가 스마트폰에서 접근 가능한가요?
-
-## 도움 요청 시 포함할 정보
-
-문제를 해결하기 위해 다음 정보를 준비해주세요:
-
-1. **백엔드 서버 콘솔 로그** (전체)
-2. **브라우저 콘솔 로그** (전체)
-3. **Network 탭의 API 요청/응답**
-4. **오류 메시지** (전체)
-5. **환경 변수 설정 상태** (민감 정보 제외)
-
-
-
-
+이 정보를 바탕으로 더 정확한 해결책을 제시할 수 있습니다.
