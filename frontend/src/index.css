@@ -53,11 +53,20 @@
   * {
     border-color: var(--border);
   }
+  html,
+  :host {
+    /* 텍스트 크기 조정 호환성 */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
   body {
     background-color: var(--background);
     color: var(--foreground);
     /* 모바일 터치 최적화 */
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    /* 텍스트 크기 조정 호환성 */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 }

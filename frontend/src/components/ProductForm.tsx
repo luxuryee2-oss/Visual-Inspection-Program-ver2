@@ -68,6 +68,7 @@ export function ProductForm() {
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
                 placeholder="제품명을 입력하거나 스캔하세요"
+                title="제품명"
                 required
                 className="border-4 border-foreground flex-1"
               />
@@ -89,6 +90,7 @@ export function ProductForm() {
               value={inspector}
               onChange={(e) => setInspector(e.target.value)}
               placeholder="검사자 이름을 입력하세요"
+              title="검사자"
               required
               className="border-4 border-foreground"
             />
@@ -101,6 +103,7 @@ export function ProductForm() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="비고를 입력하세요 (선택사항)"
+              title="비고"
               className="border-4 border-foreground"
             />
           </div>

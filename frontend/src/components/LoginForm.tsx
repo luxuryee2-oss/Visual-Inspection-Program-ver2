@@ -46,6 +46,7 @@ export function LoginForm() {
               id="email"
               type="email"
               placeholder="example@email.com"
+              title="이메일"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -59,6 +60,7 @@ export function LoginForm() {
               id="password"
               type="password"
               placeholder="비밀번호를 입력하세요"
+              title="비밀번호"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

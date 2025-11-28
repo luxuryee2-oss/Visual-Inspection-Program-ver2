@@ -60,6 +60,7 @@ export function RegisterForm() {
               id="email"
               type="email"
               placeholder="example@email.com"
+              title="이메일"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -73,6 +74,7 @@ export function RegisterForm() {
               id="username"
               type="text"
               placeholder="사용자명을 입력하세요"
+              title="사용자명"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -86,6 +88,7 @@ export function RegisterForm() {
               id="name"
               type="text"
               placeholder="이름을 입력하세요"
+              title="이름"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="border-4 border-foreground"
@@ -98,6 +101,7 @@ export function RegisterForm() {
               id="password"
               type="password"
               placeholder="비밀번호를 입력하세요 (최소 6자)"
+              title="비밀번호"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -112,6 +116,7 @@ export function RegisterForm() {
               id="confirmPassword"
               type="password"
               placeholder="비밀번호를 다시 입력하세요"
+              title="비밀번호 확인"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
