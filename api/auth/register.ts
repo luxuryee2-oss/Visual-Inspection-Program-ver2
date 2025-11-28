@@ -41,8 +41,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // 초기 로깅
+  console.log('회원가입 요청 수신');
+  console.log('DATABASE_URL 존재:', !!process.env.DATABASE_URL);
+  console.log('JWT_SECRET 존재:', !!process.env.JWT_SECRET);
+
   try {
     const { email, username, password, name } = req.body;
+    console.log('요청 본문:', { email, username, hasPassword: !!password, name });
     
     // Prisma 클라이언트 가져오기
     let prismaClient;
@@ -116,11 +122,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 항상 JSON 응답 보장
     try {
       // Prisma 연결 오류 확인
-      if (error?.code === 'P1001' || error?.code === 'P1000' || error?.message?.includes('Can\'t reach database server') || error?.message?.includes('database')) {
+      if (error?.code === 'P1001' || error?.code === 'P1000' || error?.message?.includes('Can\'t reach database server') || error?.message?.includes('database') || error?.message?.includes('DATABASE_URL')) {
         return res.status(500).json({
           success: false,
-          error: '데이터베이스 연결에 실패했습니다. 데이터베이스 설정을 확인해주세요.',
-          details: process.env.NODE_ENV === 'development' ? error?.message : undefined,
+          error: '데이터베이스 연결에 실패했습니다. Vercel Postgres 데이터베이스를 생성하고 DATABASE_URL 환경 변수를 설정해주세요.',
+          code: error?.code,
+          details: error?.message,
         });
       }
 
@@ -129,14 +136,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({
           success: false,
           error: '데이터베이스 오류가 발생했습니다.',
-          details: process.env.NODE_ENV === 'development' ? error?.message : undefined,
+          code: error?.code,
+          details: error?.message,
+        });
+      }
+
+      // Prisma 클라이언트 초기화 오류
+      if (error?.message?.includes('PrismaClient') || error?.message?.includes('초기화')) {
+        return res.status(500).json({
+          success: false,
+          error: '데이터베이스 클라이언트 초기화에 실패했습니다. Prisma 클라이언트가 빌드되었는지 확인해주세요.',
+          details: error?.message,
         });
       }
 
       return res.status(500).json({
         success: false,
         error: '회원가입 중 오류가 발생했습니다.',
-        details: process.env.NODE_ENV === 'development' ? error?.message : undefined,
+        code: error?.code,
+        details: error?.message,
+        type: error?.name || typeof error,
       });
     } catch (jsonError) {
       // JSON 응답도 실패하는 경우 (매우 드뭄)
