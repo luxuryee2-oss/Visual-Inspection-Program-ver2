@@ -27,6 +27,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const prisma = new PrismaClient({
       log: ['error'],
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
     });
 
     try {
