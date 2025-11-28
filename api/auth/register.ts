@@ -3,9 +3,29 @@ import bcrypt from 'bcrypt';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+// Prisma 클라이언트 싱글톤 패턴 (Vercel Serverless Functions용)
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  });
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS 헤더 추가
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -65,10 +85,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error: any) {
     console.error('회원가입 오류:', error);
-    res.status(500).json({
+    console.error('에러 스택:', error.stack);
+    
+    // Prisma 연결 오류 확인
+    if (error.code === 'P1001' || error.message?.includes('Can\'t reach database server')) {
+      return res.status(500).json({
+        error: '데이터베이스 연결에 실패했습니다. 데이터베이스 설정을 확인해주세요.',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+
+    return res.status(500).json({
       error: '회원가입 중 오류가 발생했습니다.',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
+  } finally {
+    // Prisma 연결 정리 (선택사항, Vercel에서는 자동으로 처리됨)
+    // await prisma.$disconnect();
   }
 }
 
