@@ -76,10 +76,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await response.json();
+    let data;
+    try {
+      const text = await response.text();
+      if (!text) {
+        throw new Error('서버에서 응답이 없습니다.');
+      }
+      data = JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON 파싱 오류:', parseError);
+      throw new Error('서버 응답을 파싱할 수 없습니다. 서버 오류가 발생했을 수 있습니다.');
+    }
 
     if (!response.ok) {
-      throw new Error(data.error || '로그인 실패');
+      throw new Error(data.error || data.message || '로그인 실패');
     }
 
     setToken(data.token);
@@ -96,10 +106,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, username, password, name }),
     });
 
-    const data = await response.json();
+    let data;
+    try {
+      const text = await response.text();
+      if (!text) {
+        throw new Error('서버에서 응답이 없습니다.');
+      }
+      data = JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON 파싱 오류:', parseError);
+      throw new Error('서버 응답을 파싱할 수 없습니다. 서버 오류가 발생했을 수 있습니다.');
+    }
 
     if (!response.ok) {
-      throw new Error(data.error || '회원가입 실패');
+      throw new Error(data.error || data.message || '회원가입 실패');
     }
 
     setToken(data.token);
