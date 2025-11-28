@@ -1,8 +1,17 @@
-import type { InspectionData } from '@/components/ProductForm';
-
-// Vercel 배포 환경에서는 /api 경로 사용, 로컬에서는 localhost 사용
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.PROD ? '/api' : 'http://localhost:3000/api');
+
+export interface InspectionData {
+  productName: string;
+  inspector: string;
+  notes: string;
+  photos: {
+    front: string | null;
+    back: string | null;
+    left: string | null;
+    right: string | null;
+  };
+}
 
 interface ApiResponse {
   success: boolean;
@@ -10,13 +19,25 @@ interface ApiResponse {
   data?: any;
 }
 
+// 인증 토큰을 포함한 헤더 가져오기
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem('token');
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+}
+
 export async function saveInspectionData(data: InspectionData): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/inspection`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
 
@@ -24,9 +45,15 @@ export async function saveInspectionData(data: InspectionData): Promise<ApiRespo
       let errorMessage = '저장에 실패했습니다.';
       try {
         const error = await response.json();
-        errorMessage = error.message || error.error || errorMessage;
+        errorMessage = error.error || error.message || errorMessage;
+        
+        // 인증 오류인 경우
+        if (response.status === 401 || response.status === 403) {
+          errorMessage = '인증이 필요합니다. 다시 로그인해주세요.';
+          localStorage.removeItem('token');
+          window.location.reload();
+        }
       } catch {
-        // JSON 파싱 실패 시 기본 메시지 사용
         errorMessage = `서버 오류 (${response.status}): ${response.statusText}`;
       }
       throw new Error(errorMessage);
@@ -35,7 +62,6 @@ export async function saveInspectionData(data: InspectionData): Promise<ApiRespo
     const result: ApiResponse = await response.json();
     return result;
   } catch (error) {
-    // 네트워크 오류 처리
     if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new Error('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.');
     }
@@ -43,4 +69,25 @@ export async function saveInspectionData(data: InspectionData): Promise<ApiRespo
   }
 }
 
+export async function getInspectionHistory(): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/inspection/history`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
 
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('token');
+        window.location.reload();
+        throw new Error('인증이 필요합니다.');
+      }
+      throw new Error('검사 이력 조회에 실패했습니다.');
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    throw error;
+  }
+}

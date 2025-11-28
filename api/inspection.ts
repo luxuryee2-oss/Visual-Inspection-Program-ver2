@@ -30,10 +30,10 @@ export default async function handler(
   }
 
   try {
-    const data = req.body as InspectionData;
+    const data: InspectionData = req.body;
 
     // 유효성 검사
-    if (!data?.productName || !data?.inspector) {
+    if (!data.productName || !data.inspector) {
       return res.status(400).json({
         error: '제품명과 검사자는 필수입니다.',
       });
@@ -41,7 +41,7 @@ export default async function handler(
 
     // SharePoint 저장 기능은 나중에 구현
     // 현재는 성공 응답만 반환
-    return res.json({
+    res.json({
       success: true,
       message: '데이터가 성공적으로 저장되었습니다.',
       data: {
@@ -50,11 +50,10 @@ export default async function handler(
         timestamp: new Date().toISOString(),
       },
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error('저장 오류:', error);
-    const errorMessage = error instanceof Error ? error.message : '데이터 저장 중 오류가 발생했습니다.';
-    return res.status(500).json({
-      error: errorMessage,
+    res.status(500).json({
+      error: error.message || '데이터 저장 중 오류가 발생했습니다.',
     });
   }
 }

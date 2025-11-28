@@ -1,17 +1,1 @@
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "types": ["@vercel/node"]
-  },
-  "include": ["api/**/*"],
-  "exclude": ["node_modules", "frontend", "backend"]
-}
 
