@@ -15,11 +15,11 @@
   "dependencies": {
     "@prisma/client": "^7.0.1",
     "@vercel/node": "^5.5.12",
-    "bcrypt": "^6.0.0",
+    "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.1",
     "concurrently": "^9.1.2",
